@@ -1,0 +1,62 @@
+{
+	"name": "dt_entregas",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "entregas_csv",
+						"type": "DatasetReference"
+					},
+					"name": "source1"
+				}
+			],
+			"sinks": [],
+			"transformations": [
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "split1"
+				},
+				{
+					"name": "aggregate1"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          entrega_id as string,",
+				"          pedido_id as string,",
+				"          repartidor_id as string,",
+				"          hora_salida as string,",
+				"          hora_entrega as string,",
+				"          tiempo_entrega_min as string,",
+				"          distancia_km as string,",
+				"          estado_entrega as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> source1",
+				"source1 derive(entrega_id = trim(upper(entrega_id)),",
+				"          pedido_id = trim(upper(pedido_id)),",
+				"          repartidor_id = trim(upper(repartidor_id)),",
+				"          hora_salida = toTimestamp(hora_salida, 'HH:mm:ss'),",
+				"          hora_entrega = toTimestamp(hora_entrega, 'HH:mm:ss'),",
+				"          tiempo_entrega_min = toInteger(tiempo_entrega_min),",
+				"          distancia_km = toDecimal(distancia_km, 8, 2),",
+				"          estado_entrega = trim(initCap(estado_entrega))) ~> derivedColumn1",
+				"derivedColumn1 split(!isNull(entrega_id) && !isNull(pedido_id),",
+				"     disjoint: false) ~> split1@(Viable, Descartados)",
+				"split1@Viable aggregate(groupBy(entrega_id),",
+				"     pedido_id = first(pedido_id),",
+				"          repartidor_id = first(repartidor_id),",
+				"          hora_salida = first(hora_salida),",
+				"          hora_entrega = first(hora_entrega),",
+				"          tiempo_entrega_min = first(tiempo_entrega_min),",
+				"          distancia_km = first(distancia_km),",
+				"          estado_entrega = first(estado_entrega)) ~> aggregate1"
+			]
+		}
+	}
+}

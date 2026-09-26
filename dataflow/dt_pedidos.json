@@ -1,0 +1,88 @@
+{
+	"name": "dt_pedidos",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "pedidos_csv",
+						"type": "DatasetReference"
+					},
+					"name": "source1"
+				}
+			],
+			"sinks": [],
+			"transformations": [
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "split1"
+				},
+				{
+					"name": "aggregate1"
+				},
+				{
+					"name": "derivedColumn2"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          pedido_id as string,",
+				"          fecha_pedido as string,",
+				"          hora_pedido as string,",
+				"          cliente_id as string,",
+				"          sucursal_id as string,",
+				"          canal as string,",
+				"          tipo_servicio as string,",
+				"          estado_pedido as string,",
+				"          promocion_id as string,",
+				"          subtotal as string,",
+				"          costo_delivery as string,",
+				"          descuento as string,",
+				"          impuesto as string,",
+				"          total_pedido as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> source1",
+				"source1 derive(pedido_id = trim(upper(pedido_id)),",
+				"          fecha_pedido = toDate(fecha_pedido, 'yyyy-MM-dd'),",
+				"          hora_pedido = toTimestamp(hora_pedido, 'HH:mm:ss'),",
+				"          cliente_id = trim(upper(cliente_id)),",
+				"          sucursal_id = trim(upper(sucursal_id)),",
+				"          canal = trim(initCap(canal)),",
+				"          tipo_servicio = trim(initCap(tipo_servicio)),",
+				"          estado_pedido = trim(initCap(estado_pedido)),",
+				"          promocion_id = trim(upper(promocion_id)),",
+				"          subtotal = toDecimal(subtotal, 12, 2),",
+				"          costo_delivery = toDecimal(costo_delivery, 12, 2),",
+				"          descuento = toDecimal(descuento, 12, 2),",
+				"          impuesto = toDecimal(impuesto, 12, 2),",
+				"          total_pedido = toDecimal(total_pedido, 12, 2)) ~> derivedColumn1",
+				"derivedColumn1 split(!isNull(pedido_id) && !isNull(cliente_id) && !isNull(fecha_pedido) && !isNull(total_pedido) && total_pedido >= 0,",
+				"     disjoint: false) ~> split1@(Validas, Rechazadas)",
+				"split1@Validas aggregate(groupBy(pedido_id),",
+				"     fecha_pedido = first(fecha_pedido),",
+				"          hora_pedido = first(hora_pedido),",
+				"          cliente_id = first(cliente_id),",
+				"          sucursal_id = first(sucursal_id),",
+				"          canal = first(canal),",
+				"          tipo_servicio = first(tipo_servicio),",
+				"          estado_pedido = first(estado_pedido),",
+				"          promocion_id = first(promocion_id),",
+				"          subtotal = first(subtotal),",
+				"          costo_delivery = first(costo_delivery),",
+				"          descuento = first(descuento),",
+				"          impuesto = first(impuesto),",
+				"          total_pedido = first(total_pedido)) ~> aggregate1",
+				"aggregate1 derive(subtotal = toDecimal(subtotal, 12, 2),",
+				"          costo_delivery = toDecimal(costo_delivery, 12, 2),",
+				"          descuento = toDecimal(descuento, 12, 2),",
+				"          impuesto = toDecimal(impuesto, 12, 2),",
+				"          total_pedido = toDecimal(total_pedido, 12, 2)) ~> derivedColumn2"
+			]
+		}
+	}
+}

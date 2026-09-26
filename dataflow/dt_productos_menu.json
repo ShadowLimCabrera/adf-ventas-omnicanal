@@ -1,0 +1,61 @@
+{
+	"name": "dt_productos_menu",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "productos_menu_csv",
+						"type": "DatasetReference"
+					},
+					"name": "source1"
+				}
+			],
+			"sinks": [],
+			"transformations": [
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "split1"
+				},
+				{
+					"name": "aggregate1"
+				},
+				{
+					"name": "derivedColumn2"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          producto_id as string,",
+				"          nombre_producto as string,",
+				"          categoria as string,",
+				"          precio_lista as string,",
+				"          costo_estimado as string,",
+				"          disponible as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> source1",
+				"source1 derive(producto_id = trim(upper(producto_id)),",
+				"          nombre_producto = trim(initCap(nombre_producto)),",
+				"          categoria = trim(initCap(categoria)),",
+				"          precio_lista = toDecimal(precio_lista, 12, 2),",
+				"          costo_estimado = toDecimal(costo_estimado, 12, 2),",
+				"          disponible = iif(disponible == 'true' || disponible == '1', 1, 0)) ~> derivedColumn1",
+				"derivedColumn1 split(!isNull(producto_id) && !isNull(nombre_producto) && !isNull(precio_lista) && precio_lista > 0,",
+				"     disjoint: false) ~> split1@(Validas, Rechazadas)",
+				"split1@Validas aggregate(groupBy(producto_id),",
+				"     nombre_producto = first(nombre_producto),",
+				"          categoria = first(categoria),",
+				"          precio_lista = first(precio_lista),",
+				"          costo_estimado = first(costo_estimado),",
+				"          disponible = first(disponible)) ~> aggregate1",
+				"aggregate1 derive(precio_lista = toDecimal(precio_lista, 12, 2),",
+				"          costo_estimado = toDecimal(costo_estimado, 12, 2)) ~> derivedColumn2"
+			]
+		}
+	}
+}
